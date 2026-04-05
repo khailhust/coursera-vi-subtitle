@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>🌐 Translation Server — Integration Tests</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', 'Roboto', sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      padding: 24px;
+      line-height: 1.6;
+    }
+    h1 {
+      font-size: 22px;
+      margin-bottom: 8px;
+      color: #58a6ff;
+    }
+    .summary {
+      font-size: 14px;
+      margin-bottom: 20px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .summary.pass { background: rgba(63,185,80,0.15); color: #3fb950; border: 1px solid rgba(63,185,80,0.3); }
+    .summary.fail { background: rgba(248,81,73,0.15); color: #f85149; border: 1px solid rgba(248,81,73,0.3); }
+    .summary.running { background: rgba(88,166,255,0.15); color: #58a6ff; border: 1px solid rgba(88,166,255,0.3); }
+
+    .test-group {
+      margin-bottom: 20px;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .test-group-header {
+      background: #161b22;
+      padding: 10px 16px;
+      font-weight: 600;
+      font-size: 14px;
+      color: #8b949e;
+      border-bottom: 1px solid #30363d;
+      cursor: pointer;
+      user-select: none;
+    }
+    .test-group-header .count { float: right; font-weight: 400; }
+
+    .test-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 16px;
+      font-size: 13px;
+      border-bottom: 1px solid #21262d;
+    }
+    .test-item:last-child { border-bottom: none; }
+    
+    .test-icon { font-size: 15px; min-width: 20px; text-align: center; }
+    .test-name { flex: 1; }
+    .test-detail {
+      font-size: 11px;
+      color: #8b949e;
+      margin-top: 2px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .pass-icon { color: #3fb950; }
+    .fail-icon { color: #f85149; }
+    .spin-icon { color: #58a6ff; display: inline-block; animation: spin 1s linear infinite; }
+    .test-item.fail { background: rgba(248,81,73,0.06); }
+
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    .btn-run {
+      background: linear-gradient(135deg, #1565c0, #42a5f5);
+      color: #fff;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌐 Translation Server — Integration Tests (Phase 2)</h1>
+  <button class="btn-run" onclick="runAllTests()">▶ Chạy các bài test Server (Port 8765)</button>
+  <div id="summary" class="summary running" style="display: none;"></div>
+  <div id="results">
+    <p style="color: #8b949e; font-size: 13px;">Hãy đảm bảo bạn đang bật dịch vụ <code>python server.py</code> ở dưới máy tính trước khi bấm nút chạy.</p>
+  </div>
+
+  <script>
+    const SERVER_URL = 'http://localhost:8765';
+
+    // === MINI ASYNC TEST FRAMEWORK ===
+    let groups = [];
+    let currentGroup = null;
+
+    function describe(name, fn) {
+      currentGroup = { name, tests: [] };
+      groups.push(currentGroup);
+      fn();
+    }
+
+    function it(name, fn) {
+      currentGroup.tests.push({ name, fn });
+    }
+
+    function expect(actual) {
+      return {
+        toBe(expected) {
+          if (actual !== expected) throw new Error(`Expected ${expected}, got ${actual}`);
+        },
+        toBeTruthy() {
+          if (!actual) throw new Error(`Expected truthy, got ${actual}`);
+        },
+        toContain(str) {
+          if (!actual.includes(str)) throw new Error(`Expected to contain "${str}"`);
+        }
+      };
+    }
+
+    // Tiện ích sleep
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+    // === DEFINING TESTS ===
+
+    describe('1. API System Health', () => {
+      it('Kiểm tra kết nối Server (/health)', async () => {
+        const res = await fetch(`${SERVER_URL}/health`);
+        const data = await res.json();
+        expect(res.ok).toBeTruthy();
+        expect(data.status).toBe('ok');
+        expect(data.engines.some(e => e.name === 'opus-mt')).toBeTruthy();
+      });
+
+      it('Ghi log lỗi về Server (/health/error)', async () => {
+        const res = await fetch(`${SERVER_URL}/health/error?msg=Test%20Ping`);
+        const data = await res.json();
+        expect(res.ok).toBeTruthy();
+        expect(data.status).toBe('ok');
+      });
+    });
+
+    describe('2. Direct Translation Endpoint', () => {
+      it('Dịch 1 từ tiếng Anh (/translate/text)', async () => {
+        const res = await fetch(`${SERVER_URL}/translate/text`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: "Hello", engine: "opus-mt" })
+        });
+        const data = await res.json();
+        expect(data.translated).toBeTruthy();
+      });
+    });
+
+    describe('3. Job Queue System (Phase 2 Core)', () => {
+      let createdJobId = null;
+
+      it('Tạo job dịch mới (/translate/job)', async () => {
+        const cues = [
+          { originalText: "This is a test of the background job system." },
+          { originalText: "It should process without blocking." }
+        ];
+
+        const res = await fetch(`${SERVER_URL}/translate/job`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cues: cues, engine: "opus-mt", use_glossary: true })
+        });
+        
+        const data = await res.json();
+        expect(data.success).toBeTruthy();
+        expect(data.job_id !== undefined).toBeTruthy();
+        createdJobId = data.job_id;
+      });
+
+      it('Polling Job Status & Đợi thành công', async () => {
+        if (!createdJobId) throw new Error("Chưa có job_id từ test trước");
+
+        let status = 'translating';
+        let retries = 0;
+        let finalJobData = null;
+
+        while (status === 'translating' && retries < 15) {
+          await sleep(1000);
+          const res = await fetch(`${SERVER_URL}/translate/job/${createdJobId}`);
+          const job = await res.json();
+          status = job.status;
+          finalJobData = job;
+          retries++;
+        }
+
+        expect(status).toBe('completed');
+        expect(finalJobData.progress).toBe(100);
+        expect(finalJobData.result.length).toBe(2);
+        expect(finalJobData.result[0].translatedText.length > 0).toBeTruthy();
+      });
+
+      it('Hủy tiến trình Job (/translate/job/cancel)', async () => {
+        // Ta tạo 1 job lớn (>50 item) để server phải chia >1 chunk xử lý
+        // Mới có kẽ hở giữa các vòng lặp để bắt tín hiệu Cancel
+        const dummyCues = Array(150).fill({ originalText: "A short text to process." });
+        const startRes = await fetch(`${SERVER_URL}/translate/job`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cues: dummyCues, engine: "opus-mt", use_glossary: true })
+        });
+        const startData = await startRes.json();
+        const cancelId = startData.job_id;
+
+        // Bấm hủy ngay
+        const cancelRes = await fetch(`${SERVER_URL}/translate/job/cancel`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ job_id: cancelId })
+        });
+        expect(cancelRes.ok).toBeTruthy();
+
+        // Đợi background task chạy xong mẻ 50 câu hiện tại (chiếm khoảng 2-4 giây trên CPU) 
+        // rồi mới nhận lệnh Cancel
+        let status = 'translating';
+        let retries = 0;
+        let statusData = null;
+
+        while (status === 'translating' && retries < 15) {
+          await sleep(1000);
+          const statusRes = await fetch(`${SERVER_URL}/translate/job/${cancelId}`);
+          statusData = await statusRes.json();
+          status = statusData.status;
+          retries++;
+        }
+
+        expect(status).toBe('cancelled');
+        expect(statusData.progress < 100).toBeTruthy();
+      });
+    });
+
+    // === RUN ENGINE ===
+    async function runAllTests() {
+      const resultsDiv = document.getElementById('results');
+      const summaryDiv = document.getElementById('summary');
+      
+      resultsDiv.innerHTML = '';
+      summaryDiv.style.display = 'flex';
+      summaryDiv.className = 'summary running';
+      summaryDiv.innerHTML = `<span>⏳ Đang kết nối tới port 8765 để chạy API tests...</span>`;
+
+      let totalPass = 0, totalFail = 0;
+
+      for (const group of groups) {
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'test-group';
+        
+        const header = document.createElement('div');
+        header.className = 'test-group-header';
+        header.innerHTML = `⚙️ ${group.name} <span class="count">...</span>`;
+        groupDiv.appendChild(header);
+
+        const itemsContainer = document.createElement('div');
+        groupDiv.appendChild(itemsContainer);
+        resultsDiv.appendChild(groupDiv);
+
+        let groupPass = 0, groupFail = 0;
+
+        for (const test of group.tests) {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'test-item';
+          itemDiv.innerHTML = `
+            <span class="test-icon spin-icon">●</span>
+            <div class="test-name">${test.name}</div>
+          `;
+          itemsContainer.appendChild(itemDiv);
+
+          try {
+            await test.fn();
+            groupPass++;
+            totalPass++;
+            itemDiv.innerHTML = `
+              <span class="test-icon pass-icon">✓</span>
+              <div class="test-name">${test.name}</div>
+            `;
+          } catch (err) {
+            groupFail++;
+            totalFail++;
+            itemDiv.classList.add('fail');
+            itemDiv.innerHTML = `
+              <span class="test-icon fail-icon">✗</span>
+              <div class="test-name">
+                ${test.name}
+                <div class="test-detail">${err.message}</div>
+              </div>
+            `;
+          }
+        }
+
+        const statusIcon = groupFail > 0 ? '❌' : '✅';
+        header.innerHTML = `${statusIcon} ${group.name} <span class="count">${groupPass}/${groupPass + groupFail}</span>`;
+      }
+
+      if (totalFail === 0) {
+        summaryDiv.className = 'summary pass';
+        summaryDiv.innerHTML = `<span>✅ Tất cả ${totalPass} API Tests PASSED! Server Backend hoàn hảo.</span>`;
+      } else {
+        summaryDiv.className = 'summary fail';
+        summaryDiv.innerHTML = `<span>❌ ${totalFail} FAILED / ${totalPass + totalFail} API Tests</span>`;
+      }
+    }
+  </script>
+</body>
+</html>
+<script>window.onload = async () => { await runAllTests(); document.body.setAttribute("data-test-done", "true"); };</script>

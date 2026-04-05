@@ -263,5 +263,67 @@ footer {
   color: #ef5350;
 }
 
+/* --- Server Status --- */
+.server-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot.online { background: #4caf50; box-shadow: 0 0 6px rgba(76,175,80,0.6); }
+.dot.offline { background: #ef5350; box-shadow: 0 0 6px rgba(239,83,80,0.4); }
+.dot.checking { background: #f0c040; animation: pulse 1s infinite; }
+
+.btn-icon {
+  background: none;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  margin-left: auto;
+  transition: color 0.2s;
+}
+
+.btn-icon:hover { color: #42a5f5; }
+
+/* --- Progress Bar --- */
+.progress-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #42a5f5, #66bb6a);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: #42a5f5;
+  min-width: 35px;
+  text-align: right;
+}
+
 /* --- Utilities --- */
 .hidden { display: none !important; }

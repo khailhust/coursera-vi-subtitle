@@ -304,12 +304,10 @@
   <div class="layout">
     <!-- VIDEO AREA -->
     <div class="video-area" id="video-area">
-      <video id="test-video" controls preload="auto">
-        <!-- Will use generated test video -->
-      </video>
-      <div class="video-placeholder" id="placeholder" style="position:absolute;">
+      <video id="test-video" controls muted playsinline></video>
+      <div class="video-placeholder" id="placeholder" style="position:absolute; display:none;">
         <div class="icon">🎬</div>
-        <p>Video test sẽ tự tạo khi bạn load subtitle</p>
+        <p>Subtitle loaded. Video ready.</p>
       </div>
     </div>
 
@@ -430,67 +428,67 @@
       el.textContent = pass ? '✓' : '✗';
     }
 
-    // === GENERATE TEST VIDEO ===
-    // Creates a canvas-based video stream to test sync without needing a real video file
-    function generateTestVideo(durationSec) {
+    // === TEST VIDEO STREAM ===
+    let videoStreamTimer = null;
+    function setupCanvasStream() {
       const canvas = document.createElement('canvas');
       canvas.width = 640;
       canvas.height = 360;
       const ctx = canvas.getContext('2d');
+      const stream = canvas.captureStream(30);
 
-      // Use MediaRecorder to create a video blob
-      const stream = canvas.captureStream(10); // 10 fps
-      const recorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp8' });
-      const chunks = [];
+      // Start rendering loop immediately (runs infinitely)
+      if (videoStreamTimer) clearInterval(videoStreamTimer);
+      
+      videoStreamTimer = setInterval(() => {
+        const time = video.currentTime; // Sync simulation exact with video player
 
-      return new Promise((resolve) => {
-        recorder.ondataavailable = e => chunks.push(e.data);
-        recorder.onstop = () => {
-          const blob = new Blob(chunks, { type: 'video/webm' });
-          resolve(URL.createObjectURL(blob));
-        };
+        // Draw frame
+        ctx.fillStyle = '#0d1117';
+        ctx.fillRect(0, 0, 640, 360);
 
-        // Record frames
-        let frame = 0;
-        const totalFrames = durationSec * 10;
-        const interval = setInterval(() => {
-          const time = frame / 10;
+        // Time display
+        ctx.fillStyle = '#58a6ff';
+        ctx.font = 'bold 48px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        const m = String(Math.floor(time / 60)).padStart(2, '0');
+        const s = String(Math.floor(time % 60)).padStart(2, '0');
+        const ms = String(Math.floor((time % 1) * 10));
+        ctx.fillText(`${m}:${s}.${ms}`, 320, 180);
 
-          // Draw frame
-          ctx.fillStyle = '#0d1117';
-          ctx.fillRect(0, 0, 640, 360);
+        // Label
+        ctx.fillStyle = '#484f58';
+        ctx.font = '16px Segoe UI, sans-serif';
+        ctx.fillText('Test Simulation — Coursera VI Subtitle', 320, 230);
 
-          // Time display
-          ctx.fillStyle = '#58a6ff';
-          ctx.font = 'bold 48px Segoe UI, sans-serif';
-          ctx.textAlign = 'center';
-          const m = String(Math.floor(time / 60)).padStart(2, '0');
-          const s = String(Math.floor(time % 60)).padStart(2, '0');
-          const ms = String(Math.floor((time % 1) * 10));
-          ctx.fillText(`${m}:${s}.${ms}`, 320, 180);
+        // Progress bar (fake)
+        const progress = (time % 30) / 30; // loop every 30s visually
+        ctx.fillStyle = '#21262d';
+        ctx.fillRect(40, 300, 560, 8);
+        ctx.fillStyle = '#42a5f5';
+        ctx.fillRect(40, 300, 560 * progress, 8);
+      }, 33);
 
-          // Label
-          ctx.fillStyle = '#484f58';
-          ctx.font = '16px Segoe UI, sans-serif';
-          ctx.fillText('Test Video — Coursera VI Subtitle', 320, 230);
-
-          // Progress bar
-          const progress = time / durationSec;
-          ctx.fillStyle = '#21262d';
-          ctx.fillRect(40, 300, 560, 8);
-          ctx.fillStyle = '#42a5f5';
-          ctx.fillRect(40, 300, 560 * progress, 8);
-
-          frame++;
-          if (frame >= totalFrames) {
-            clearInterval(interval);
-            recorder.stop();
-          }
-        }, 100);
-
-        recorder.start();
-      });
+      video.srcObject = stream;
     }
+
+    // Initialize blank stream
+    setupCanvasStream();
+
+    // Custom play tracking since streams don't have finite duration
+    let playTimer = null;
+    video.addEventListener('play', () => {
+      if (playTimer) clearInterval(playTimer);
+      playTimer = setInterval(() => {
+        // Only increment if we have subtitles, else loop at 30s
+        if (video.currentTime > videoDuration) {
+          video.currentTime = 0;
+        }
+      }, 100);
+    });
+    video.addEventListener('pause', () => {
+      if (playTimer) clearInterval(playTimer);
+    });
 
     // === LOAD SUBTITLE FILE ===
     document.getElementById('file-input').addEventListener('change', async (e) => {
@@ -559,19 +557,17 @@ bài tập đơn giản nhé!`;
 
     // === SETUP VIDEO ===
     async function setupVideo() {
-      addLog('Đang tạo test video...');
-      document.getElementById('placeholder').style.display = 'none';
+      addLog('Đã load subtitle. Sẵn sàng test.');
+      document.getElementById('placeholder').style.display = 'block';
 
-      // Determine video duration from subtitle data
+      // Determine video duration from subtitle data if possible
       if (subtitles.length > 0) {
-        videoDuration = Math.ceil(subtitles[subtitles.length - 1].end) + 4;
+        videoDuration = Math.max(30, Math.ceil(subtitles[subtitles.length - 1].end) + 4);
       }
 
-      const videoUrl = await generateTestVideo(videoDuration);
-      video.src = videoUrl;
-      video.load();
+      // Reset timer
+      video.currentTime = 0;
 
-      addLog(`Video test tạo xong (${videoDuration}s)`, 'success');
       document.getElementById('btn-toggle').disabled = false;
       document.getElementById('badge-status').textContent = 'Sẵn sàng';
 
@@ -638,6 +634,7 @@ bài tập đơn giản nhé!`;
         return;
       }
 
+      // Custom simulation time since normal video might be too short
       const activeCueIndex = subtitles.findIndex(
         cue => currentTime >= cue.start && currentTime <= cue.end
       );

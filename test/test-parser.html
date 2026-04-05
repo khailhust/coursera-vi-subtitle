@@ -589,59 +589,66 @@ This has <b>bold</b> & "quotes"`;
     // === RUN TESTS ===
     function runAllTests() {
       const resultsDiv = document.getElementById('results');
+      const summaryDiv = document.getElementById('summary');
+      
       resultsDiv.innerHTML = '';
-      let totalPass = 0, totalFail = 0;
+      summaryDiv.className = 'summary running';
+      summaryDiv.textContent = '⏳ Đang chạy tests...';
 
-      for (const group of groups) {
-        let groupPass = 0, groupFail = 0;
-        const itemsHtml = [];
+      // Tạo delay nhỏ để user thấy rõ giao diện đang update
+      setTimeout(() => {
+        let totalPass = 0, totalFail = 0;
 
-        for (const test of group.tests) {
-          try {
-            test.fn();
-            groupPass++;
-            totalPass++;
-            itemsHtml.push(`
-              <div class="test-item">
-                <span class="test-icon pass-icon">✓</span>
-                <div class="test-name">${test.name}</div>
-              </div>
-            `);
-          } catch (err) {
-            groupFail++;
-            totalFail++;
-            itemsHtml.push(`
-              <div class="test-item fail">
-                <span class="test-icon fail-icon">✗</span>
-                <div class="test-name">
-                  ${test.name}
-                  <div class="test-detail">${err.message}</div>
+        for (const group of groups) {
+          let groupPass = 0, groupFail = 0;
+          const itemsHtml = [];
+
+          for (const test of group.tests) {
+            try {
+              test.fn();
+              groupPass++;
+              totalPass++;
+              itemsHtml.push(`
+                <div class="test-item">
+                  <span class="test-icon pass-icon">✓</span>
+                  <div class="test-name">${test.name}</div>
                 </div>
-              </div>
-            `);
+              `);
+            } catch (err) {
+              groupFail++;
+              totalFail++;
+              itemsHtml.push(`
+                <div class="test-item fail">
+                  <span class="test-icon fail-icon">✗</span>
+                  <div class="test-name">
+                    ${test.name}
+                    <div class="test-detail">${err.message}</div>
+                  </div>
+                </div>
+              `);
+            }
           }
+
+          const statusIcon = groupFail > 0 ? '❌' : '✅';
+          resultsDiv.innerHTML += `
+            <div class="test-group">
+              <div class="test-group-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? '' : 'none'">
+                ${statusIcon} ${group.name}
+                <span class="count">${groupPass}/${groupPass + groupFail}</span>
+              </div>
+              <div>${itemsHtml.join('')}</div>
+            </div>
+          `;
         }
 
-        const statusIcon = groupFail > 0 ? '❌' : '✅';
-        resultsDiv.innerHTML += `
-          <div class="test-group">
-            <div class="test-group-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? '' : 'none'">
-              ${statusIcon} ${group.name}
-              <span class="count">${groupPass}/${groupPass + groupFail}</span>
-            </div>
-            <div>${itemsHtml.join('')}</div>
-          </div>
-        `;
-      }
-
-      const summaryDiv = document.getElementById('summary');
-      if (totalFail === 0) {
-        summaryDiv.className = 'summary pass';
-        summaryDiv.textContent = `✅ Tất cả ${totalPass} tests PASSED!`;
-      } else {
-        summaryDiv.className = 'summary fail';
-        summaryDiv.textContent = `❌ ${totalFail} FAILED / ${totalPass + totalFail} tests`;
-      }
+        if (totalFail === 0) {
+          summaryDiv.className = 'summary pass';
+          summaryDiv.textContent = `✅ Tất cả ${totalPass} tests PASSED!`;
+        } else {
+          summaryDiv.className = 'summary fail';
+          summaryDiv.textContent = `❌ ${totalFail} FAILED / ${totalPass + totalFail} tests`;
+        }
+      }, 150); // delay 150ms
     }
 
     // Auto-run on load

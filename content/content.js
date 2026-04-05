@@ -4,6 +4,12 @@
  * Hỗ trợ: kéo thả tự do, fullscreen, F5 persistence, SPA navigation
  */
 
+// Guard: chống inject trùng khi cả manifest và scripting API đều inject
+if (window.__courseraViSubtitleLoaded) {
+  console.log('[Coursera VI] Already loaded, skipping duplicate injection');
+} else {
+window.__courseraViSubtitleLoaded = true;
+
 // === STATE ===
 let subtitles = [];
 let overlayDiv = null;
@@ -233,13 +239,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   switch (message.type) {
     case 'LOAD_SUBTITLES':
+      console.log('[Coursera VI] LOAD_SUBTITLES received:', message.subtitles?.length, 'cues');
       subtitles = message.subtitles;
       syncOffset = message.syncOffset || 0;
       isEnabled = true;
+      // Lưu vào storage cho F5 persistence
+      safeStorageSet({ subtitles, isEnabled, syncOffset });
       if (!overlayDiv) createOverlay();
+      console.log('[Coursera VI] Overlay div:', !!overlayDiv);
       const video = findMainVideo();
-      if (video) startSync(video);
-      sendResponse({ success: true });
+      console.log('[Coursera VI] Video found:', !!video, video?.src || video?.currentSrc || 'no src');
+      if (video) {
+        startSync(video);
+      } else {
+        console.warn('[Coursera VI] Không tìm thấy video! Overlay sẽ hiện khi video xuất hiện.');
+      }
+      sendResponse({ success: true, hasVideo: !!video });
       break;
 
     case 'TOGGLE_ENABLED':
@@ -376,3 +391,5 @@ function showToast(text) {
 }
 
 console.log('[Coursera VI] Content script loaded (draggable overlay)');
+
+} // end guard: window.__courseraViSubtitleLoaded
