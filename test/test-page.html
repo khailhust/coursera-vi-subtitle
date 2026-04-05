@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>🎬 Test Overlay — Coursera VI Subtitle</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', 'Roboto', sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      min-height: 100vh;
+    }
+
+    /* --- Top Bar --- */
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 20px;
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+    }
+    .topbar h1 { font-size: 15px; color: #58a6ff; font-weight: 600; }
+    .topbar .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: rgba(63,185,80,0.15);
+      color: #3fb950;
+      border: 1px solid rgba(63,185,80,0.3);
+    }
+
+    /* --- Layout --- */
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 0;
+      height: calc(100vh - 45px);
+    }
+
+    /* --- Video Area --- */
+    .video-area {
+      position: relative;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .video-area video {
+      width: 100%;
+      max-height: 100%;
+    }
+    .video-placeholder {
+      text-align: center;
+      color: #484f58;
+    }
+    .video-placeholder .icon { font-size: 48px; }
+    .video-placeholder p { margin-top: 8px; font-size: 13px; }
+
+    /* --- Sidebar --- */
+    .sidebar {
+      background: #161b22;
+      border-left: 1px solid #30363d;
+      overflow-y: auto;
+      padding: 16px;
+    }
+    .sidebar h2 {
+      font-size: 13px;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 12px;
+    }
+
+    /* --- Controls --- */
+    .control-group {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .control-group label {
+      display: block;
+      font-size: 12px;
+      color: #8b949e;
+      margin-bottom: 6px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 8px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 6px;
+      transition: all 0.2s;
+    }
+    .btn:last-child { margin-bottom: 0; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #1565c0, #42a5f5);
+      color: #fff;
+    }
+    .btn-primary:hover { box-shadow: 0 4px 12px rgba(66,165,245,0.3); transform: translateY(-1px); }
+
+    .btn-success {
+      background: linear-gradient(135deg, #238636, #2ea043);
+      color: #fff;
+    }
+    .btn-success:hover { box-shadow: 0 4px 12px rgba(46,160,67,0.3); transform: translateY(-1px); }
+
+    .btn-danger {
+      background: rgba(248,81,73,0.15);
+      color: #f85149;
+      border: 1px solid rgba(248,81,73,0.3);
+    }
+    .btn-danger:hover { background: rgba(248,81,73,0.25); }
+
+    .btn-outline {
+      background: rgba(255,255,255,0.04);
+      color: #8b949e;
+      border: 1px solid #30363d;
+    }
+    .btn-outline:hover { background: rgba(255,255,255,0.08); color: #c9d1d9; }
+
+    .file-input-wrapper {
+      position: relative;
+    }
+    .file-input-wrapper input[type="file"] {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    /* --- Log --- */
+    .log {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 10px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 11px;
+      max-height: 220px;
+      overflow-y: auto;
+      line-height: 1.6;
+    }
+    .log-entry { padding: 1px 0; }
+    .log-info { color: #8b949e; }
+    .log-success { color: #3fb950; }
+    .log-warn { color: #d29922; }
+    .log-error { color: #f85149; }
+
+    /* --- Status --- */
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      padding: 4px 0;
+      border-bottom: 1px solid #21262d;
+    }
+    .status-label { color: #8b949e; }
+    .status-value { color: #c9d1d9; font-weight: 500; }
+
+    /* --- Sync --- */
+    .sync-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .sync-btn {
+      background: rgba(255,255,255,0.06);
+      color: #8b949e;
+      border: 1px solid #30363d;
+      width: 36px; height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .sync-btn:hover { background: rgba(66,165,245,0.15); color: #42a5f5; border-color: #42a5f5; }
+    .sync-value {
+      font-family: 'Consolas', monospace;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      min-width: 55px;
+      text-align: center;
+    }
+
+    /* --- Overlay (same as extension) --- */
+    #test-overlay {
+      position: fixed;
+      bottom: 15%;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 999999;
+      max-width: 85vw;
+      width: max-content;
+      text-align: center;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      pointer-events: auto;
+      cursor: grab;
+      user-select: none;
+      padding: 4px;
+    }
+    #test-overlay:hover {
+      outline: 2px dashed rgba(66, 165, 245, 0.6);
+      outline-offset: 4px;
+      border-radius: 8px;
+    }
+    #test-overlay.dragging {
+      cursor: grabbing;
+      outline: 2px solid rgba(66, 165, 245, 0.9);
+      outline-offset: 4px;
+      opacity: 0.85;
+    }
+    .cue-vi {
+      background: rgba(0, 0, 0, 0.82);
+      color: #ffffff;
+      font-size: 18px;
+      line-height: 1.5;
+      padding: 6px 18px;
+      border-radius: 6px;
+      display: inline-block;
+      font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+      letter-spacing: 0.2px;
+    }
+
+    /* --- Timeline --- */
+    .timeline {
+      width: 100%;
+      height: 40px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      position: relative;
+      overflow: hidden;
+      margin-top: 8px;
+      cursor: pointer;
+    }
+    .timeline-cue {
+      position: absolute;
+      top: 4px;
+      height: 18px;
+      background: rgba(66,165,245,0.3);
+      border-radius: 2px;
+      border: 1px solid rgba(66,165,245,0.5);
+    }
+    .timeline-cursor {
+      position: absolute;
+      top: 0;
+      width: 2px;
+      height: 100%;
+      background: #f85149;
+      z-index: 2;
+    }
+    .timeline-time {
+      position: absolute;
+      bottom: 2px;
+      font-size: 10px;
+      color: #484f58;
+    }
+
+    /* Checklist */
+    .checklist {
+      list-style: none;
+      padding: 0;
+    }
+    .checklist li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      font-size: 12px;
+      border-bottom: 1px solid #21262d;
+    }
+    .checklist li:last-child { border-bottom: none; }
+    .check-icon { font-size: 14px; }
+    .check-pending { color: #484f58; }
+    .check-pass { color: #3fb950; }
+    .check-fail { color: #f85149; }
+  </style>
+</head>
+<body>
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <h1>🎬 Test Overlay — Coursera VI Subtitle</h1>
+    <span class="badge" id="badge-status">Chưa load file</span>
+  </div>
+
+  <!-- LAYOUT -->
+  <div class="layout">
+    <!-- VIDEO AREA -->
+    <div class="video-area" id="video-area">
+      <video id="test-video" controls preload="auto">
+        <!-- Will use generated test video -->
+      </video>
+      <div class="video-placeholder" id="placeholder" style="position:absolute;">
+        <div class="icon">🎬</div>
+        <p>Video test sẽ tự tạo khi bạn load subtitle</p>
+      </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <!-- Step 1: Load file -->
+      <h2>1️⃣ Nạp file phụ đề</h2>
+      <div class="control-group">
+        <div class="file-input-wrapper">
+          <button class="btn btn-primary">📂 Chọn file .vtt / .srt</button>
+          <input type="file" id="file-input" accept=".vtt,.srt">
+        </div>
+        <button class="btn btn-outline" onclick="loadSampleSubtitle()" style="margin-top:6px;">
+          📋 Dùng subtitle mẫu (5 cue)
+        </button>
+      </div>
+
+      <!-- Step 2: Status -->
+      <h2>2️⃣ Trạng thái</h2>
+      <div class="control-group">
+        <div class="status-row">
+          <span class="status-label">File</span>
+          <span class="status-value" id="s-file">—</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">Số cue</span>
+          <span class="status-value" id="s-cues">—</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">Warnings</span>
+          <span class="status-value" id="s-warnings">—</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">Video time</span>
+          <span class="status-value" id="s-time">0.0s</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">Active cue</span>
+          <span class="status-value" id="s-active">—</span>
+        </div>
+      </div>
+
+      <!-- Step 3: Controls -->
+      <h2>3️⃣ Điều khiển</h2>
+      <div class="control-group">
+        <button class="btn btn-success" id="btn-toggle" onclick="toggleOverlay()" disabled>
+          ▶ BẬT OVERLAY
+        </button>
+
+        <label style="margin-top:8px;">Sync offset</label>
+        <div class="sync-row">
+          <button class="sync-btn" onclick="adjustSync(-0.5)">−</button>
+          <span class="sync-value" id="sync-display">+0.0s</span>
+          <button class="sync-btn" onclick="adjustSync(+0.5)">+</button>
+          <button class="sync-btn" onclick="resetSync()" title="Reset">↺</button>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <h2>4️⃣ Timeline</h2>
+      <div class="control-group">
+        <div class="timeline" id="timeline" onclick="seekTimeline(event)">
+          <div class="timeline-cursor" id="timeline-cursor"></div>
+        </div>
+      </div>
+
+      <!-- Test Checklist -->
+      <h2>5️⃣ Test Checklist</h2>
+      <div class="control-group">
+        <ul class="checklist">
+          <li><span class="check-icon check-pending" id="chk-parse">○</span> Parse file thành công</li>
+          <li><span class="check-icon check-pending" id="chk-overlay">○</span> Overlay hiển thị</li>
+          <li><span class="check-icon check-pending" id="chk-sync">○</span> Sync đúng thời gian</li>
+          <li><span class="check-icon check-pending" id="chk-hide">○</span> Ẩn khi hết cue</li>
+          <li><span class="check-icon check-pending" id="chk-toggle">○</span> Toggle on/off</li>
+          <li><span class="check-icon check-pending" id="chk-drag">○</span> Kéo thả overlay</li>
+        </ul>
+      </div>
+
+      <!-- Log -->
+      <h2>📝 Log</h2>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+
+  <!-- OVERLAY (test version) -->
+  <div id="test-overlay"></div>
+
+  <!-- Load Parser -->
+  <script src="../lib/subtitle-parser.js"></script>
+
+  <script>
+    // === STATE ===
+    let subtitles = [];
+    let overlayEnabled = false;
+    let syncOffset = 0;
+    let videoDuration = 30; // seconds for generated video
+    let dragHasOccurred = false;
+
+    const video = document.getElementById('test-video');
+    const overlay = document.getElementById('test-overlay');
+    const log = document.getElementById('log');
+
+    // === LOGGING ===
+    function addLog(msg, type = 'info') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      const time = new Date().toLocaleTimeString('vi-VN');
+      entry.textContent = `[${time}] ${msg}`;
+      log.prepend(entry);
+      // Keep last 100
+      while (log.children.length > 100) log.removeChild(log.lastChild);
+    }
+
+    function setCheck(id, pass) {
+      const el = document.getElementById(id);
+      el.className = `check-icon ${pass ? 'check-pass' : 'check-fail'}`;
+      el.textContent = pass ? '✓' : '✗';
+    }
+
+    // === GENERATE TEST VIDEO ===
+    // Creates a canvas-based video stream to test sync without needing a real video file
+    function generateTestVideo(durationSec) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 640;
+      canvas.height = 360;
+      const ctx = canvas.getContext('2d');
+
+      // Use MediaRecorder to create a video blob
+      const stream = canvas.captureStream(10); // 10 fps
+      const recorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp8' });
+      const chunks = [];
+
+      return new Promise((resolve) => {
+        recorder.ondataavailable = e => chunks.push(e.data);
+        recorder.onstop = () => {
+          const blob = new Blob(chunks, { type: 'video/webm' });
+          resolve(URL.createObjectURL(blob));
+        };
+
+        // Record frames
+        let frame = 0;
+        const totalFrames = durationSec * 10;
+        const interval = setInterval(() => {
+          const time = frame / 10;
+
+          // Draw frame
+          ctx.fillStyle = '#0d1117';
+          ctx.fillRect(0, 0, 640, 360);
+
+          // Time display
+          ctx.fillStyle = '#58a6ff';
+          ctx.font = 'bold 48px Segoe UI, sans-serif';
+          ctx.textAlign = 'center';
+          const m = String(Math.floor(time / 60)).padStart(2, '0');
+          const s = String(Math.floor(time % 60)).padStart(2, '0');
+          const ms = String(Math.floor((time % 1) * 10));
+          ctx.fillText(`${m}:${s}.${ms}`, 320, 180);
+
+          // Label
+          ctx.fillStyle = '#484f58';
+          ctx.font = '16px Segoe UI, sans-serif';
+          ctx.fillText('Test Video — Coursera VI Subtitle', 320, 230);
+
+          // Progress bar
+          const progress = time / durationSec;
+          ctx.fillStyle = '#21262d';
+          ctx.fillRect(40, 300, 560, 8);
+          ctx.fillStyle = '#42a5f5';
+          ctx.fillRect(40, 300, 560 * progress, 8);
+
+          frame++;
+          if (frame >= totalFrames) {
+            clearInterval(interval);
+            recorder.stop();
+          }
+        }, 100);
+
+        recorder.start();
+      });
+    }
+
+    // === LOAD SUBTITLE FILE ===
+    document.getElementById('file-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      addLog(`Đang load file: ${file.name}`);
+      const content = await file.text();
+      const format = file.name.endsWith('.vtt') ? 'vtt' : 'srt';
+
+      const result = SubtitleParser.parse(content, format);
+      subtitles = result.cues;
+
+      addLog(`Parse xong: ${subtitles.length} cues`, 'success');
+      setCheck('chk-parse', subtitles.length > 0);
+
+      if (result.warnings.length > 0) {
+        result.warnings.forEach(w => addLog(w, 'warn'));
+      }
+
+      updateStatus(file.name, result);
+      await setupVideo();
+    });
+
+    // === LOAD SAMPLE SUBTITLE ===
+    async function loadSampleSubtitle() {
+      addLog('Đang load subtitle mẫu (5 cue)...');
+
+      const sampleVTT = `WEBVTT
+
+1
+00:00:01.000 --> 00:00:04.000
+Xin chào! Chúng tôi rất vui mừng
+vì bạn đã có mặt ở đây.
+
+2
+00:00:05.000 --> 00:00:08.000
+Tôi là Emilio, và tôi là một
+Quản lý Chương trình tại Google.
+
+3
+00:00:10.000 --> 00:00:14.000
+Chào mừng bạn đến với Chương trình
+Chứng chỉ Google về Quản lý Dự án.
+
+4
+00:00:16.000 --> 00:00:20.000
+Trong khóa học này, bạn sẽ học
+các kỹ năng quản lý dự án cốt lõi.
+
+5
+00:00:22.000 --> 00:00:26.000
+Hãy cùng bắt đầu với một
+bài tập đơn giản nhé!`;
+
+      const result = SubtitleParser.parse(sampleVTT, 'vtt');
+      subtitles = result.cues;
+      videoDuration = 30;
+
+      addLog(`Parse xong: ${subtitles.length} cues`, 'success');
+      setCheck('chk-parse', true);
+
+      updateStatus('sample-5-cues.vtt', result);
+      await setupVideo();
+    }
+
+    // === SETUP VIDEO ===
+    async function setupVideo() {
+      addLog('Đang tạo test video...');
+      document.getElementById('placeholder').style.display = 'none';
+
+      // Determine video duration from subtitle data
+      if (subtitles.length > 0) {
+        videoDuration = Math.ceil(subtitles[subtitles.length - 1].end) + 4;
+      }
+
+      const videoUrl = await generateTestVideo(videoDuration);
+      video.src = videoUrl;
+      video.load();
+
+      addLog(`Video test tạo xong (${videoDuration}s)`, 'success');
+      document.getElementById('btn-toggle').disabled = false;
+      document.getElementById('badge-status').textContent = 'Sẵn sàng';
+
+      // Build timeline
+      buildTimeline();
+    }
+
+    // === UPDATE STATUS ===
+    function updateStatus(fileName, result) {
+      document.getElementById('s-file').textContent = fileName;
+      document.getElementById('s-cues').textContent = result.cues.length;
+      document.getElementById('s-warnings').textContent =
+        result.warnings.length === 0 ? '✅ Không có' : `⚠️ ${result.warnings.length}`;
+    }
+
+    // === TOGGLE OVERLAY ===
+    function toggleOverlay() {
+      overlayEnabled = !overlayEnabled;
+      const btn = document.getElementById('btn-toggle');
+
+      if (overlayEnabled) {
+        btn.textContent = '⏸ TẮT OVERLAY';
+        btn.className = 'btn btn-danger';
+        overlay.style.display = 'flex';
+        video.play();
+        addLog('Overlay BẬT', 'success');
+      } else {
+        btn.textContent = '▶ BẬT OVERLAY';
+        btn.className = 'btn btn-success';
+        overlay.style.display = 'none';
+        addLog('Overlay TẮT');
+        setCheck('chk-toggle', true);
+      }
+    }
+
+    // === SYNC ===
+    function adjustSync(delta) {
+      syncOffset += delta;
+      document.getElementById('sync-display').textContent =
+        `${syncOffset >= 0 ? '+' : ''}${syncOffset.toFixed(1)}s`;
+      addLog(`Sync offset: ${syncOffset.toFixed(1)}s`);
+    }
+
+    function resetSync() {
+      syncOffset = 0;
+      document.getElementById('sync-display').textContent = '+0.0s';
+      addLog('Sync reset về 0');
+    }
+
+    // === VIDEO TIMEUPDATE → SYNC OVERLAY ===
+    let lastActiveCueIndex = -1;
+    let hasShownOverlay = false;
+    let hasHiddenBetweenCues = false;
+
+    video.addEventListener('timeupdate', () => {
+      const currentTime = video.currentTime + syncOffset;
+      document.getElementById('s-time').textContent = currentTime.toFixed(1) + 's';
+
+      // Update timeline cursor
+      updateTimelineCursor();
+
+      if (!overlayEnabled || subtitles.length === 0) {
+        overlay.style.display = 'none';
+        return;
+      }
+
+      const activeCueIndex = subtitles.findIndex(
+        cue => currentTime >= cue.start && currentTime <= cue.end
+      );
+
+      if (activeCueIndex !== -1) {
+        const cue = subtitles[activeCueIndex];
+        overlay.style.display = 'flex';
+        overlay.innerHTML = `<div class="cue-vi">${cue.translatedText}</div>`;
+        document.getElementById('s-active').textContent =
+          `#${activeCueIndex + 1}: "${cue.translatedText.substring(0, 30)}..."`;
+
+        if (!hasShownOverlay) {
+          hasShownOverlay = true;
+          setCheck('chk-overlay', true);
+          addLog('✓ Overlay hiển thị thành công', 'success');
+        }
+
+        if (activeCueIndex !== lastActiveCueIndex && lastActiveCueIndex !== -1) {
+          setCheck('chk-sync', true);
+          addLog(`✓ Chuyển cue: #${lastActiveCueIndex + 1} → #${activeCueIndex + 1}`, 'success');
+        }
+        lastActiveCueIndex = activeCueIndex;
+      } else {
+        overlay.style.display = 'none';
+        document.getElementById('s-active').textContent = '— (giữa 2 cue)';
+
+        if (hasShownOverlay && !hasHiddenBetweenCues) {
+          hasHiddenBetweenCues = true;
+          setCheck('chk-hide', true);
+          addLog('✓ Overlay ẩn khi hết cue', 'success');
+        }
+      }
+    });
+
+    // === TIMELINE ===
+    function buildTimeline() {
+      const timeline = document.getElementById('timeline');
+      // Remove old cue markers
+      timeline.querySelectorAll('.timeline-cue, .timeline-time').forEach(el => el.remove());
+
+      subtitles.forEach((cue, i) => {
+        const div = document.createElement('div');
+        div.className = 'timeline-cue';
+        div.style.left = (cue.start / videoDuration * 100) + '%';
+        div.style.width = ((cue.end - cue.start) / videoDuration * 100) + '%';
+        div.title = `#${i + 1}: ${cue.translatedText.substring(0, 50)}`;
+        timeline.appendChild(div);
+      });
+
+      // Time labels
+      for (let t = 0; t <= videoDuration; t += Math.ceil(videoDuration / 5)) {
+        const label = document.createElement('span');
+        label.className = 'timeline-time';
+        label.style.left = (t / videoDuration * 100) + '%';
+        label.textContent = t + 's';
+        timeline.appendChild(label);
+      }
+    }
+
+    function updateTimelineCursor() {
+      const cursor = document.getElementById('timeline-cursor');
+      const progress = video.currentTime / videoDuration;
+      cursor.style.left = (progress * 100) + '%';
+    }
+
+    function seekTimeline(e) {
+      const rect = e.target.closest('.timeline').getBoundingClientRect();
+      const ratio = (e.clientX - rect.left) / rect.width;
+      video.currentTime = ratio * videoDuration;
+    }
+
+    // === DRAG & DROP OVERLAY ===
+    let isDragging = false;
+    let dragStartX, dragStartY, overlayStartX, overlayStartY;
+
+    overlay.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      isDragging = true;
+      overlay.classList.add('dragging');
+
+      const rect = overlay.getBoundingClientRect();
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      overlayStartX = rect.left + rect.width / 2;
+      overlayStartY = rect.top;
+
+      document.addEventListener('mousemove', onDragMove);
+      document.addEventListener('mouseup', onDragEnd);
+    });
+
+    function onDragMove(e) {
+      if (!isDragging) return;
+      const newCenterX = overlayStartX + (e.clientX - dragStartX);
+      const newTop = overlayStartY + (e.clientY - dragStartY);
+      overlay.style.left = newCenterX + 'px';
+      overlay.style.top = newTop + 'px';
+      overlay.style.bottom = 'auto';
+      overlay.style.transform = 'translateX(-50%)';
+    }
+
+    function onDragEnd() {
+      if (!isDragging) return;
+      isDragging = false;
+      overlay.classList.remove('dragging');
+      document.removeEventListener('mousemove', onDragMove);
+      document.removeEventListener('mouseup', onDragEnd);
+
+      if (!dragHasOccurred) {
+        dragHasOccurred = true;
+        setCheck('chk-drag', true);
+        addLog('✓ Kéo thả overlay thành công', 'success');
+      }
+    }
+
+    // === KEYBOARD SHORTCUTS ===
+    document.addEventListener('keydown', (e) => {
+      if (!e.ctrlKey || !e.shiftKey) return;
+
+      switch (e.key) {
+        case 'K':
+          if (subtitles.length > 0) toggleOverlay();
+          e.preventDefault();
+          break;
+      }
+
+      if (e.code === 'BracketRight') {
+        adjustSync(0.5);
+        e.preventDefault();
+      }
+      if (e.code === 'BracketLeft') {
+        adjustSync(-0.5);
+        e.preventDefault();
+      }
+    });
+
+    // === INIT ===
+    addLog('Test page loaded. Chọn file phụ đề hoặc dùng subtitle mẫu để bắt đầu test.');
+  </script>
+</body>
+</html>

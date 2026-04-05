@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>🧪 SubtitleParser — Unit Tests</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', 'Roboto', sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      padding: 24px;
+      line-height: 1.6;
+    }
+    h1 {
+      font-size: 22px;
+      margin-bottom: 8px;
+      color: #58a6ff;
+    }
+    .summary {
+      font-size: 14px;
+      margin-bottom: 20px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+    .summary.pass { background: rgba(63,185,80,0.15); color: #3fb950; border: 1px solid rgba(63,185,80,0.3); }
+    .summary.fail { background: rgba(248,81,73,0.15); color: #f85149; border: 1px solid rgba(248,81,73,0.3); }
+    .summary.running { background: rgba(88,166,255,0.15); color: #58a6ff; border: 1px solid rgba(88,166,255,0.3); }
+
+    .test-group {
+      margin-bottom: 20px;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .test-group-header {
+      background: #161b22;
+      padding: 10px 16px;
+      font-weight: 600;
+      font-size: 14px;
+      color: #8b949e;
+      border-bottom: 1px solid #30363d;
+      cursor: pointer;
+      user-select: none;
+    }
+    .test-group-header:hover { background: #1c2129; }
+    .test-group-header .count { float: right; font-weight: 400; }
+
+    .test-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 16px;
+      font-size: 13px;
+      border-bottom: 1px solid #21262d;
+      transition: background 0.15s;
+    }
+    .test-item:last-child { border-bottom: none; }
+    .test-item:hover { background: rgba(255,255,255,0.02); }
+
+    .test-icon { font-size: 15px; min-width: 20px; text-align: center; padding-top: 1px; }
+    .test-name { flex: 1; }
+    .test-detail {
+      font-size: 11px;
+      color: #8b949e;
+      margin-top: 2px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .pass-icon { color: #3fb950; }
+    .fail-icon { color: #f85149; }
+    .test-item.fail { background: rgba(248,81,73,0.06); }
+
+    .btn-run {
+      background: linear-gradient(135deg, #238636, #2ea043);
+      color: #fff;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 16px;
+      transition: all 0.2s;
+    }
+    .btn-run:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(46,160,67,0.3); }
+  </style>
+</head>
+<body>
+  <h1>🧪 SubtitleParser — Unit Tests</h1>
+  <button class="btn-run" onclick="runAllTests()">▶ Chạy lại tất cả</button>
+  <div id="summary" class="summary running">⏳ Đang chạy tests...</div>
+  <div id="results"></div>
+
+  <!-- Load parser -->
+  <script src="../lib/subtitle-parser.js?v=2"></script>
+
+  <script>
+    // === MINI TEST FRAMEWORK ===
+    const groups = [];
+    let currentGroup = null;
+
+    function describe(name, fn) {
+      currentGroup = { name, tests: [] };
+      groups.push(currentGroup);
+      fn();
+      currentGroup = null;
+    }
+
+    function it(name, fn) {
+      currentGroup.tests.push({ name, fn });
+    }
+
+    function expect(actual) {
+      return {
+        toBe(expected) {
+          if (actual !== expected) throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+        },
+        toEqual(expected) {
+          const a = JSON.stringify(actual), b = JSON.stringify(expected);
+          if (a !== b) throw new Error(`Expected ${b}, got ${a}`);
+        },
+        toBeGreaterThan(n) {
+          if (!(actual > n)) throw new Error(`Expected ${actual} > ${n}`);
+        },
+        toBeLessThan(n) {
+          if (!(actual < n)) throw new Error(`Expected ${actual} < ${n}`);
+        },
+        toBeCloseTo(expected, precision = 2) {
+          const diff = Math.abs(actual - expected);
+          const eps = Math.pow(10, -precision) / 2;
+          if (diff > eps) throw new Error(`Expected ${actual} to be close to ${expected} (diff: ${diff})`);
+        },
+        toContain(str) {
+          if (typeof actual === 'string' && !actual.includes(str)) throw new Error(`Expected string to contain "${str}"`);
+          if (Array.isArray(actual) && !actual.includes(str)) throw new Error(`Expected array to contain ${JSON.stringify(str)}`);
+        },
+        toHaveLength(n) {
+          if (actual.length !== n) throw new Error(`Expected length ${n}, got ${actual.length}`);
+        },
+        toBeTruthy() {
+          if (!actual) throw new Error(`Expected truthy, got ${JSON.stringify(actual)}`);
+        },
+        toBeFalsy() {
+          if (actual) throw new Error(`Expected falsy, got ${JSON.stringify(actual)}`);
+        }
+      };
+    }
+
+    // === TESTS ===
+
+    // ─── 1. timeToSeconds ───
+    describe('timeToSeconds — Chuyển đổi timestamp', () => {
+      it('Parse HH:MM:SS.mmm chuẩn', () => {
+        expect(SubtitleParser.timeToSeconds('00:01:23.456')).toBeCloseTo(83.456, 3);
+      });
+
+      it('Parse HH:MM:SS,mmm (dấu phẩy thay dấu chấm — lỗi 2C)', () => {
+        expect(SubtitleParser.timeToSeconds('00:01:23,456')).toBeCloseTo(83.456, 3);
+      });
+
+      it('Parse MM:SS.mmm (thiếu giờ)', () => {
+        expect(SubtitleParser.timeToSeconds('01:23.456')).toBeCloseTo(83.456, 3);
+      });
+
+      it('Parse 00:00:00.000 → 0', () => {
+        expect(SubtitleParser.timeToSeconds('00:00:00.000')).toBe(0);
+      });
+
+      it('Parse 01:00:00.000 → 3600', () => {
+        expect(SubtitleParser.timeToSeconds('01:00:00.000')).toBe(3600);
+      });
+
+      it('Parse 00:00:00.200 → 0.2 (file Coursera thật)', () => {
+        expect(SubtitleParser.timeToSeconds('00:00:00.200')).toBeCloseTo(0.2, 3);
+      });
+    });
+
+    // ─── 2. VTT Parsing ───
+    describe('parseVTT — File VTT chuẩn', () => {
+      it('Parse file VTT chuẩn Coursera (có cue ID)', () => {
+        const content = `WEBVTT
+
+1
+00:00:00.200 --> 00:00:03.840
+Hi! We're so excited
+that you're here.
+
+2
+00:00:03.840 --> 00:00:06.540
+I'm Emilio, and I'm a
+Program Manager on`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        expect(result.cues).toHaveLength(2);
+        expect(result.cues[0].start).toBeCloseTo(0.2, 3);
+        expect(result.cues[0].end).toBeCloseTo(3.84, 3);
+        expect(result.cues[0].translatedText).toBe("Hi! We're so excited that you're here.");
+        expect(result.cues[1].translatedText).toBe("I'm Emilio, and I'm a Program Manager on");
+      });
+
+      it('Parse VTT không có cue ID', () => {
+        const content = `WEBVTT
+
+00:00:01.000 --> 00:00:03.000
+Xin chào
+
+00:00:03.000 --> 00:00:05.000
+Tạm biệt`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        expect(result.cues).toHaveLength(2);
+        expect(result.cues[0].translatedText).toBe("Xin chào");
+      });
+
+      it('Parse VTT tiếng Việt Unicode', () => {
+        const content = `WEBVTT
+
+1
+00:00:00.200 --> 00:00:03.840
+Xin chào! Chúng tôi rất vui
+vì bạn ở đây.`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        expect(result.cues).toHaveLength(1);
+        expect(result.cues[0].translatedText).toBe("Xin chào! Chúng tôi rất vui vì bạn ở đây.");
+      });
+
+      it('Ghép multi-line text thành 1 dòng', () => {
+        const content = `WEBVTT
+
+00:00:00.000 --> 00:00:05.000
+Line one
+Line two
+Line three`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        expect(result.cues[0].translatedText).toBe("Line one Line two Line three");
+      });
+
+      it('Bỏ qua block WEBVTT header', () => {
+        const content = `WEBVTT
+Kind: captions
+Language: en
+
+00:00:01.000 --> 00:00:03.000
+Hello`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        expect(result.cues).toHaveLength(1);
+        expect(result.cues[0].translatedText).toBe("Hello");
+      });
+
+      it('File rỗng → 0 cues', () => {
+        const result = SubtitleParser.parse('WEBVTT\n\n', 'vtt');
+        expect(result.cues).toHaveLength(0);
+      });
+
+      it('File chỉ có header → 0 cues', () => {
+        const result = SubtitleParser.parse('WEBVTT', 'vtt');
+        expect(result.cues).toHaveLength(0);
+      });
+    });
+
+    // ─── 3. SRT Parsing ───
+    describe('parseSRT — File SRT chuẩn', () => {
+      it('Parse SRT chuẩn', () => {
+        const content = `1
+00:00:01,000 --> 00:00:03,000
+Hello world
+
+2
+00:00:03,000 --> 00:00:06,000
+Goodbye world`;
+
+        const result = SubtitleParser.parse(content, 'srt');
+        expect(result.cues).toHaveLength(2);
+        expect(result.cues[0].start).toBeCloseTo(1.0, 3);
+        expect(result.cues[0].end).toBeCloseTo(3.0, 3);
+        expect(result.cues[0].translatedText).toBe("Hello world");
+      });
+
+      it('Parse SRT với dấu phẩy timestamp (chuẩn SRT)', () => {
+        const content = `1
+00:01:23,456 --> 00:01:25,789
+Test comma`;
+
+        const result = SubtitleParser.parse(content, 'srt');
+        expect(result.cues[0].start).toBeCloseTo(83.456, 3);
+        expect(result.cues[0].end).toBeCloseTo(85.789, 3);
+      });
+    });
+
+    // ─── 4. Robustness — File méo mó ───
+    describe('Robustness — Xử lý file AI-generated / copy-paste', () => {
+      it('File thiếu dòng trắng giữa cues (fix 2A)', () => {
+        const content = `WEBVTT
+
+00:00:01.000 --> 00:00:03.000
+Dòng một
+00:00:03.000 --> 00:00:05.000
+Dòng hai`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        expect(result.cues).toHaveLength(2);
+        expect(result.cues[0].translatedText).toBe("Dòng một");
+        expect(result.cues[1].translatedText).toBe("Dòng hai");
+      });
+
+      it('Dấu mũi tên sai: -> thay vì -->', () => {
+        const content = `WEBVTT
+
+00:00:01.000 -> 00:00:03.000
+Arrow test`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        expect(result.cues).toHaveLength(1);
+        expect(result.cues[0].translatedText).toBe("Arrow test");
+      });
+
+      it('Dấu mũi tên sai: ---> (3 dấu gạch)', () => {
+        const content = `WEBVTT
+
+00:00:01.000 ---> 00:00:03.000
+Triple dash`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        expect(result.cues).toHaveLength(1);
+      });
+
+      it('Dấu mũi tên sai: - > (có khoảng trắng)', () => {
+        const content = `WEBVTT
+
+00:00:01.000 - > 00:00:03.000
+Spaced arrow`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        expect(result.cues).toHaveLength(1);
+      });
+
+      it('File có Windows line endings (\\r\\n)', () => {
+        const content = "WEBVTT\r\n\r\n00:00:01.000 --> 00:00:03.000\r\nWindows CRLF";
+        const result = SubtitleParser.parse(content, 'vtt');
+        expect(result.cues).toHaveLength(1);
+        expect(result.cues[0].translatedText).toBe("Windows CRLF");
+      });
+
+      it('File có khoảng trắng thừa giữa blocks', () => {
+        const content = `WEBVTT
+
+
+   
+00:00:01.000 --> 00:00:03.000
+Extra whitespace
+
+
+00:00:04.000 --> 00:00:06.000
+After spaces`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        expect(result.cues).toHaveLength(2);
+      });
+
+      it('Cue có text rỗng → bỏ qua', () => {
+        const content = `WEBVTT
+
+00:00:01.000 --> 00:00:03.000
+
+
+00:00:04.000 --> 00:00:06.000
+Valid text`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        expect(result.cues).toHaveLength(1);
+        expect(result.cues[0].translatedText).toBe("Valid text");
+      });
+
+      it('Thiếu header WEBVTT → vẫn parse được', () => {
+        const content = `00:00:01.000 --> 00:00:03.000
+No header VTT`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        expect(result.cues).toHaveLength(1);
+        expect(result.cues[0].translatedText).toBe("No header VTT");
+      });
+    });
+
+    // ─── 5. Validation / Warnings ───
+    describe('Validate — Phát hiện file bất thường', () => {
+      it('Cảnh báo khi file dài nhưng ít cue', () => {
+        // Tạo file có nhiều dòng nhưng chỉ 1 cue
+        const padding = '\n'.repeat(25);
+        const content = `WEBVTT${padding}
+00:00:01.000 --> 00:00:03.000
+Only one cue`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        expect(result.warnings.length).toBeGreaterThan(0);
+        expect(result.warnings[0]).toContain('dòng');
+      });
+
+      it('Cảnh báo khi có cue quá dài (>300 ký tự)', () => {
+        const longText = 'A'.repeat(350);
+        const content = `WEBVTT
+
+00:00:01.000 --> 00:00:10.000
+${longText}
+
+00:00:11.000 --> 00:00:13.000
+Short
+
+00:00:14.000 --> 00:00:16.000
+Also short
+
+00:00:17.000 --> 00:00:19.000
+Yep short
+
+00:00:20.000 --> 00:00:22.000
+Still short`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        const longWarning = result.warnings.find(w => w.includes('dài bất thường'));
+        expect(!!longWarning).toBeTruthy();
+      });
+
+      it('Cảnh báo khi timestamps không tăng dần', () => {
+        const content = `WEBVTT
+
+00:00:05.000 --> 00:00:07.000
+Second cue (wrong order)
+
+00:00:01.000 --> 00:00:03.000
+First cue
+
+00:00:08.000 --> 00:00:10.000
+Third cue
+
+00:00:11.000 --> 00:00:13.000
+Fourth
+
+00:00:14.000 --> 00:00:16.000
+Fifth`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        const orderWarning = result.warnings.find(w => w.includes('thời gian'));
+        expect(!!orderWarning).toBeTruthy();
+      });
+
+      it('Không cảnh báo cho file hợp lệ', () => {
+        const content = `WEBVTT
+
+00:00:01.000 --> 00:00:03.000
+Cue 1
+
+00:00:03.000 --> 00:00:05.000
+Cue 2
+
+00:00:05.000 --> 00:00:07.000
+Cue 3
+
+00:00:07.000 --> 00:00:09.000
+Cue 4
+
+00:00:09.000 --> 00:00:11.000
+Cue 5`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        expect(result.warnings).toHaveLength(0);
+      });
+    });
+
+    // ─── 6. Data Model ───
+    describe('Data Model — Cấu trúc cue object', () => {
+      it('Cue có đầy đủ fields: start, end, originalText, translatedText', () => {
+        const content = `WEBVTT
+
+00:00:01.000 --> 00:00:03.000
+Hello world`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        const cue = result.cues[0];
+        expect(cue.start !== undefined).toBeTruthy();
+        expect(cue.end !== undefined).toBeTruthy();
+        expect(cue.originalText !== undefined).toBeTruthy();
+        expect(cue.translatedText !== undefined).toBeTruthy();
+      });
+
+      it('translatedText = originalText khi parse file mới (pre-translated)', () => {
+        const content = `WEBVTT
+
+00:00:01.000 --> 00:00:03.000
+Xin chào`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        expect(result.cues[0].originalText).toBe(result.cues[0].translatedText);
+      });
+
+      it('start < end cho mỗi cue', () => {
+        const content = `WEBVTT
+
+00:00:01.000 --> 00:00:03.000
+Cue 1
+
+00:00:04.000 --> 00:00:06.000
+Cue 2`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        result.cues.forEach(cue => {
+          expect(cue.start < cue.end).toBeTruthy();
+        });
+      });
+    });
+
+    // ─── 7. Edge Cases — Real World ───
+    describe('Edge Cases — Tình huống thực tế', () => {
+      it('File Coursera thật với 5 cue đầu', () => {
+        const content = `WEBVTT
+
+1
+00:00:00.200 --> 00:00:03.840
+Xin chào! Chúng tôi rất vui mừng
+vì bạn đã có mặt ở đây.
+
+2
+00:00:03.840 --> 00:00:06.540
+Tôi là Emilio, và tôi là một
+Quản lý Chương trình thuộc
+
+3
+00:00:06.540 --> 00:00:09.425
+nhóm Đổi mới Có trách nhiệm
+tại Google, và
+
+4
+00:00:09.425 --> 00:00:11.880
+tôi muốn chính thức
+chào mừng bạn đến với
+
+5
+00:00:11.880 --> 00:00:15.240
+Chương trình Chứng chỉ của Google
+về Quản lý Dự án.`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        expect(result.cues).toHaveLength(5);
+        expect(result.cues[0].start).toBeCloseTo(0.2, 3);
+        expect(result.cues[4].end).toBeCloseTo(15.24, 3);
+        expect(result.warnings).toHaveLength(0);
+      });
+
+      it('File rất lớn vẫn parse nhanh (176+ cues)', () => {
+        // Tạo file mô phỏng 176 cues
+        let content = 'WEBVTT\n\n';
+        for (let i = 0; i < 176; i++) {
+          const start = (i * 2.4).toFixed(3);
+          const end = ((i + 1) * 2.4).toFixed(3);
+          const h = String(Math.floor(start / 3600)).padStart(2, '0');
+          const m = String(Math.floor((start % 3600) / 60)).padStart(2, '0');
+          const s = (start % 60).toFixed(3).padStart(6, '0');
+          const h2 = String(Math.floor(end / 3600)).padStart(2, '0');
+          const m2 = String(Math.floor((end % 3600) / 60)).padStart(2, '0');
+          const s2 = (end % 60).toFixed(3).padStart(6, '0');
+          content += `${i + 1}\n${h}:${m}:${s} --> ${h2}:${m2}:${s2}\nCue number ${i + 1}\n\n`;
+        }
+        const t0 = performance.now();
+        const result = SubtitleParser.parse(content, 'vtt');
+        const elapsed = performance.now() - t0;
+
+        expect(result.cues).toHaveLength(176);
+        expect(elapsed).toBeLessThan(100); // Phải parse dưới 100ms
+      });
+
+      it('Cue có ký tự đặc biệt HTML', () => {
+        const content = `WEBVTT
+
+00:00:01.000 --> 00:00:03.000
+This has <b>bold</b> & "quotes"`;
+
+        const result = SubtitleParser.parse(content, 'vtt');
+        expect(result.cues).toHaveLength(1);
+        // Parser giữ nguyên text (không escape)
+        expect(result.cues[0].translatedText).toContain('<b>');
+      });
+    });
+
+    // === RUN TESTS ===
+    function runAllTests() {
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '';
+      let totalPass = 0, totalFail = 0;
+
+      for (const group of groups) {
+        let groupPass = 0, groupFail = 0;
+        const itemsHtml = [];
+
+        for (const test of group.tests) {
+          try {
+            test.fn();
+            groupPass++;
+            totalPass++;
+            itemsHtml.push(`
+              <div class="test-item">
+                <span class="test-icon pass-icon">✓</span>
+                <div class="test-name">${test.name}</div>
+              </div>
+            `);
+          } catch (err) {
+            groupFail++;
+            totalFail++;
+            itemsHtml.push(`
+              <div class="test-item fail">
+                <span class="test-icon fail-icon">✗</span>
+                <div class="test-name">
+                  ${test.name}
+                  <div class="test-detail">${err.message}</div>
+                </div>
+              </div>
+            `);
+          }
+        }
+
+        const statusIcon = groupFail > 0 ? '❌' : '✅';
+        resultsDiv.innerHTML += `
+          <div class="test-group">
+            <div class="test-group-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? '' : 'none'">
+              ${statusIcon} ${group.name}
+              <span class="count">${groupPass}/${groupPass + groupFail}</span>
+            </div>
+            <div>${itemsHtml.join('')}</div>
+          </div>
+        `;
+      }
+
+      const summaryDiv = document.getElementById('summary');
+      if (totalFail === 0) {
+        summaryDiv.className = 'summary pass';
+        summaryDiv.textContent = `✅ Tất cả ${totalPass} tests PASSED!`;
+      } else {
+        summaryDiv.className = 'summary fail';
+        summaryDiv.textContent = `❌ ${totalFail} FAILED / ${totalPass + totalFail} tests`;
+      }
+    }
+
+    // Auto-run on load
+    runAllTests();
+  </script>
+</body>
+</html>

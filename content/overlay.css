@@ -1,0 +1,82 @@
+#coursera-vi-subtitle-overlay {
+  position: fixed;
+  bottom: 15%;
+  left: 50%;
+  transform: translateX(-50%);  /* LUÔN căn giữa từ điểm neo */
+  z-index: 999999;
+  max-width: 85vw;              /* Giới hạn không tràn màn hình */
+  width: max-content;           /* Co giãn theo nội dung, mở rộng 2 bên */
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: auto;
+  cursor: grab;
+  transition: opacity 0.2s ease;
+  user-select: none;
+  padding: 4px;
+}
+
+/* Viền khi hover */
+#coursera-vi-subtitle-overlay:hover {
+  outline: 2px dashed rgba(66, 165, 245, 0.6);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+/* Đang kéo */
+#coursera-vi-subtitle-overlay.dragging {
+  cursor: grabbing;
+  outline: 2px solid rgba(66, 165, 245, 0.9);
+  outline-offset: 4px;
+  opacity: 0.85;
+  transition: none;
+}
+
+.cue-vi {
+  background: rgba(0, 0, 0, 0.82);
+  color: #ffffff;
+  font-size: 18px;
+  line-height: 1.5;
+  padding: 6px 18px;
+  border-radius: 6px;
+  display: inline-block;
+  font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  letter-spacing: 0.2px;
+}
+
+/* Toast thông báo */
+#coursera-vi-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 999999;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: sans-serif;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+/* Drag hint */
+#coursera-vi-drag-hint {
+  position: fixed;
+  z-index: 999999;
+  background: rgba(66, 165, 245, 0.9);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-family: 'Segoe UI', sans-serif;
+  pointer-events: none;
+  animation: hintFade 4s forwards;
+}
+
+@keyframes hintFade {
+  0%, 60% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=360">
+  <title>Coursera VI Subtitle</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- HEADER -->
+  <header id="header">
+    <div class="header-content">
+      <img src="../icons/icon48.png" alt="icon" class="logo" onerror="this.style.display='none'">
+      <h1>Coursera VI Subtitle</h1>
+    </div>
+  </header>
+
+  <!-- STATUS BAR -->
+  <div id="status-bar" class="status idle">
+    <span id="status-icon">⚪</span>
+    <span id="status-text">Chưa có file phụ đề</span>
+  </div>
+
+  <!-- SECTION: Nguồn phụ đề -->
+  <section class="section">
+    <h2>📋 Nguồn phụ đề</h2>
+    <div class="radio-group">
+      <label class="radio-item">
+        <input type="radio" name="source" value="pre-translated" checked>
+        <span>📄 Nạp file đã dịch sẵn</span>
+      </label>
+      <label class="radio-item">
+        <input type="radio" name="source" value="opus-mt" disabled>
+        <span class="disabled-text">🤖 Opus-MT <small>(Phase 2)</small></span>
+      </label>
+      <label class="radio-item">
+        <input type="radio" name="source" value="nllb-200" disabled>
+        <span class="disabled-text">🧠 NLLB-200 <small>(Phase 2)</small></span>
+      </label>
+    </div>
+  </section>
+
+  <!-- SECTION: Chọn file -->
+  <section class="section">
+    <h2>📂 File phụ đề</h2>
+    <label id="file-picker" class="file-picker">
+      <input type="file" id="file-input" accept=".vtt,.srt" hidden>
+      <span class="file-picker-text">Chọn file .vtt / .srt</span>
+    </label>
+    <div id="file-info" class="file-info hidden"></div>
+    <div id="warnings" class="warnings hidden"></div>
+  </section>
+
+  <!-- SECTION: Sync offset -->
+  <section class="section">
+    <h2>⏱️ Đồng bộ thời gian</h2>
+    <div class="sync-controls">
+      <button id="btn-sync-minus" class="sync-btn" title="Phụ đề đến muộn hơn 0.5s">- 0.5s</button>
+      <span id="sync-value" class="sync-value">0.0s</span>
+      <button id="btn-sync-plus" class="sync-btn" title="Phụ đề đến sớm hơn 0.5s">+ 0.5s</button>
+      <button id="btn-sync-reset" class="sync-reset" title="Reset về 0">↺</button>
+    </div>
+  </section>
+
+  <!-- SECTION: Gợi ý song ngữ -->
+  <section class="section hint-section">
+    <p class="hint">💡 Bật CC gốc của Coursera để xem song ngữ EN + VI</p>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <button id="btn-clear" class="btn-secondary" title="Xóa phụ đề hiện tại">🗑️ Xóa</button>
+    <button id="btn-main" class="btn-primary" disabled>▶ BẬT OVERLAY</button>
+  </footer>
+
+  <script src="../lib/subtitle-parser.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
