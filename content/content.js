@@ -52,10 +52,19 @@ function cleanup() {
   if (toast) toast.remove();
   const hint = document.getElementById('coursera-vi-drag-hint');
   if (hint) hint.remove();
-  // Gỡ timeupdate
+  // Gỡ timeupdate & resize
   const video = findMainVideo();
   if (video) video.removeEventListener('timeupdate', onTimeUpdate);
+  window.removeEventListener('resize', onWindowResize);
 }
+
+// Giới hạn biên khi cửa sổ thay đổi kích thước
+function onWindowResize() {
+  if (overlayDiv && overlayPosition) {
+    applyBoundedPosition(overlayDiv, overlayPosition);
+  }
+}
+window.addEventListener('resize', onWindowResize);
 
 // === 0. KHÔI PHỤC TỪ STORAGE (giải quyết F5) ===
 safeStorageGet(
@@ -102,12 +111,9 @@ function createOverlay() {
   overlayDiv = document.createElement('div');
   overlayDiv.id = 'coursera-vi-subtitle-overlay';
 
-  // Áp dụng vị trí đã lưu hoặc vị trí mặc định
+  // Áp dụng vị trí đã lưu kèm theo giới hạn biên (chống tràn màn hình)
   if (overlayPosition) {
-    overlayDiv.style.left = overlayPosition.centerX + 'px';
-    overlayDiv.style.top = overlayPosition.top + 'px';
-    overlayDiv.style.bottom = 'auto';
-    overlayDiv.style.transform = 'translateX(-50%)';
+    applyBoundedPosition(overlayDiv, overlayPosition);
   }
 
   document.body.appendChild(overlayDiv);
@@ -118,7 +124,42 @@ function createOverlay() {
   console.log('[Coursera VI] Overlay đã được tạo (draggable)');
 }
 
-// === 1b. DRAG & DROP ===
+// === 1b. BOUNDARY CLAMPING ===
+function getClampedPosition(centerX, top) {
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const paddingX = 20;
+  const paddingY = 20;
+  const bottomMargin = 80; // Tránh lọt dưới thanh cuộn và control của video
+  
+  let newX = centerX;
+  let newY = top;
+
+  if (newX < paddingX) newX = paddingX;
+  if (newX > viewportWidth - paddingX) newX = viewportWidth - paddingX;
+
+  if (newY < paddingY) newY = paddingY;
+  if (newY > viewportHeight - bottomMargin) newY = viewportHeight - bottomMargin;
+
+  return { centerX: newX, top: newY };
+}
+
+function applyBoundedPosition(el, pos) {
+  if (!el || !pos) return;
+  const clamped = getClampedPosition(pos.centerX, pos.top);
+  el.style.left = clamped.centerX + 'px';
+  el.style.top = clamped.top + 'px';
+  el.style.bottom = 'auto';
+  el.style.transform = 'translateX(-50%)';
+
+  // Cập nhật lại biến toàn cục & storage nếu có sai lệch (tức là bị lố ngoài màn)
+  if (clamped.centerX !== pos.centerX || clamped.top !== pos.top) {
+    overlayPosition = clamped;
+    safeStorageSet({ overlayPosition: clamped });
+  }
+}
+
+// === 1c. DRAG & DROP ===
 function setupDrag(el) {
   let isDragging = false;
   let startMouseX, startMouseY, startCenterX, startTop;
@@ -147,9 +188,12 @@ function setupDrag(el) {
     const newCenterX = startCenterX + (e.clientX - startMouseX);
     const newTop = startTop + (e.clientY - startMouseY);
 
+    // Giới hạn biên khi kéo (ngăn kéo lố ra ngoài mép)
+    const clamped = getClampedPosition(newCenterX, newTop);
+
     // left = tâm, translateX(-50%) sẽ căn giữa từ điểm này
-    el.style.left = newCenterX + 'px';
-    el.style.top = newTop + 'px';
+    el.style.left = clamped.centerX + 'px';
+    el.style.top = clamped.top + 'px';
     el.style.bottom = 'auto';
     el.style.transform = 'translateX(-50%)'; // LUÔN giữ căn giữa
   }
